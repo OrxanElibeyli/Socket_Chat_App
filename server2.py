@@ -1,94 +1,69 @@
+#                packet format
+#   | destination | length of message |   message   |
+#   |   15 byte   |      2 byte       |  0-99 byte  |
+
+
+
 import socket
 import threading
-import time
 
-HOST=''
-PORT=5000
+SERVER='192.168.43.181'                                    #chat server
+PORT=5000                                                  #port for this application
 
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-s.bind((HOST,PORT))
-s.listen()
 
-messages=[]
+s.connect((SERVER,PORT))
 
-connected_clients=[]
 
-len_as_str=''
+def customize_destination(dst):                            #costumize acording max ip length, dots (15) and conn object (conn, add = s.accept())
+    if(len(dst)<15):
+        while(len(dst)<15):
+            dst=dst + '*'
+
+    dst="raddr=('" + dst + "'"
+    return dst
+
+
+
 def check_message_len(lenght):
-    global len_as_str
+    #global len_as_str
+    len_as_str =''
     if(lenght<=99):                         #calculate length of message which will be send
         if(lenght<10):                      #this must be 2 byte. So if len<10 add '0' to end of len
             len_as_str='0' + str(lenght)
         else:
             len_as_str=str(lenght)
 
+    return len_as_str
 
 
-
-def remove_stars(dst):
-    index=dst.decode('utf-8').find('*')
-    return dst[0:index]
-        
-
-
-def receive_message(conn,addr):
+def receive_messages():
     while(True):
-        dst=conn.recv(24)                                   #accept destination ip
-        print('dst: ',dst)
-        msg_len=conn.recv(2)                                #accept incoming message length
-        print('msg: ',msg_len)
+        msg_len=s.recv(2)                                #accept incoming message length
+        msg=s.recv(int(msg_len.decode('utf-8')))
 
-        msg=conn.recv(int(msg_len.decode('utf-8')))
-        print(f'{msg} from {addr}')
-
-        destination=remove_stars(dst)
-
-        messages.append((destination,msg.decode('utf-8')))
-
-        print("msgs :",messages)
-
-
-
-def send_messages():
-    while(True):
-        print('messages  :',messages)
-        print("trying to send message...")
-        time.sleep(2)
-        if(messages):
-            print('------------- success ---------------')
-            for message in messages:
-                for connected_client in connected_clients:
-                    print('------------- success22 ---------------')
-                    print('str(message[0]) :', str(message[0].decode('utf-8')))
-                    if(str(connected_client).find(str(message[0].decode('utf-8')))!=-1):
-                        #print("msg[0] :",messages[0])
-                        #print('msg[1] :', message[1])
-                        check_message_len(len(message[1]))
-                        connected_client.sendall(len_as_str.encode('utf-8'))   #send length of data
-                        connected_client.sendall(message[1].encode('utf-8'))        #send data
-                        print('message send...')
-
-                        messages.remove(message)
-
-                        #remove sended message
+        print('\n ========> ',msg)
+        print('\n')    
 
 
 
 
-
-
-
-t0=threading.Thread(target=send_messages)
-t0.start()
-
-while(True):
-    conn, addr = s.accept()
-    connected_clients.append(conn)
-
-    print('connected clients  :',connected_clients)
-
-    
-
-    t=threading.Thread(target=receive_message, args=(conn,addr))
+if(__name__ == '__main__'):
+    t=threading.Thread(target=receive_messages)
     t.start()
 
+
+    dst=input("enter destination:")                         #where client want to send message
+    dst=customize_destination(dst)
+    
+
+    while(True):
+        s.sendall(dst.encode('utf-8'))                      #send destination (first packet)  
+
+        msg=input('enter message  :')
+        lenght=len(msg)
+        len_as_str=check_message_len(lenght)                #length of outgoing message. for example, 89,45,56,07,04
+        
+
+        s.sendall(len_as_str.encode('utf-8'))               #send length of message (second packet)
+        s.sendall(msg.encode('utf-8'))                      #send message itself (thrid packet)
