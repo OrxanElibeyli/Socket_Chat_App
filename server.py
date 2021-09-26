@@ -1,96 +1,97 @@
+#                packet format
+#   | destination | length of message |   message   |
+#   |   24 byte   |      2 byte       |  0-99 byte  |
+
+
+
+
 import socket
 import threading
 import time
+from logging1 import Logging1
+
+HOST=''                                                 #all network interfaces can be used for connection
+PORT=5000                                               #port which server listen
+
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s.bind((HOST,PORT))
+s.listen()
+
+logger=Logging1()
+
+data_packets=[]                                          #destination and message to destination
+connected_clients=[]                                     #socket addresses of connnected clients
+
+def check_message_len(lenght):
+    '''customize length of outgoing message. If len<10 add '0' to end of len'''
+    len_as_str=''
+    if(lenght<=99):
+        if(lenght<10):
+            len_as_str='0' + str(lenght)
+        else:
+            len_as_str=str(lenght)
+    return len_as_str
 
 
-HOST='localhost'
-PORT=5000
-
-s=None
-clients=[]
-messages_to_clients=[]
-data=[]
-connectted_client_addresses=[]
+def remove_stars(dst):
+    '''  raddr=('192.168.4.181** ===> raddr=('192.168.4.181  '''
+    index=dst.find('*')
+    return dst[0:index]
 
 
-def create_socket(host,port):
-    global s
-    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    s.bind((host,port))
-    s.listen(2)
-
-
-def remove_tags(msg):
-    index1=msg.find('</dst>')
-    dst=msg[0 : index1]
-    index2=msg.find('</msg>')
-    message=msg[index1+11 : index2]
-    packet=[dst,message]
-    messages_to_clients.append(packet)
-    print("message to clients  : ",messages_to_clients)
-    return
-
-
-def accept_message(conn):
-    print('function called')
-    message=''
-    #clients.append(addr)
+def receive_message(conn,addr):
+    '''receive messages from each client'''
     while(True):
-        msg=conn.recv(20)
-        if not msg:
-            break
-        #print(msg)
-        
-        message=message+msg.decode('utf-8')
-        print(message)
-        #remove_tags(message)
-        if(msg.decode('utf-8').find('<end>')!=-1):
-            remove_tags(message)
-            message=''
-            #break
+        dst=(conn.recv(24)).decode('utf-8')                           #accept destination ip
 
-    #remove_tags(message)
-    
-            
-            
-        
-        
-        
+        logger.log('info', 'message destination is: ' + dst)
+
+        msg_len=(conn.recv(2)).decode('utf-8')                        #accept incoming message length
+        msg=(conn.recv(int(msg_len))).decode('utf-8')
+
+        logger.log('info', f'{msg} from {addr} to {dst}')
+
+        dst=remove_stars(dst)
+        data_packets.append((dst,msg))
+
+        logger.log('info', 'data packets is : ' + str(data_packets))
 
 
-    #print(clients)
-
-    return
-    #print(data)
-
-
-def send_message():
+def send_messages():
+    ''' check message destination and connected clients. Then send messages'''
     while(True):
-        print("trying to send messages")
-        for packet in messages_to_clients:
-            for client in connectted_client_addresses:
-                if(client[0]==packet[0]):
-                    s.sendto(packet[1].encode('utf-8'),client)
-                else:
-                    time.sleep(5)
+        time.sleep(2)
+        if(data_packets):
+            for packet in data_packets:
+                for connected_client in connected_clients:
+                    if(str(connected_client).find(packet[0])!=-1):
+                        len_as_str=check_message_len(len(packet[1]))
+                        connected_client.sendall(len_as_str.encode('utf-8'))       #send length of data
+                        connected_client.sendall(packet[1].encode('utf-8'))        #send data
+
+                        logger.log('info', f'message sent: {packet}')
+
+                        data_packets.remove(packet)
 
 
-    #if client is not online write message to temporary file
+def main():
+    ''' program begin from here '''
+    send_thread=threading.Thread(target=send_messages)
+    send_thread.start()
 
-if __name__ == '__main__':
-    create_socket(HOST,PORT)
-
-    t0=threading.Thread(target=send_message)
-    t0.start()
     while(True):
         conn, addr = s.accept()
-        connectted_client_addresses.append(addr)
-        print('connection accepted')
-        print(connectted_client_addresses)
+        connected_clients.append(conn)
 
-        t=threading.Thread(target=accept_message, args=[conn])
-        t.start()
+        log_line='connected clients: ' + str(connected_clients)
+        logger.log('info',log_line)
+
+        #print('connected clients  :',connected_clients)
 
 
-        
-    accept_connections()
+        receive_thread=threading.Thread(target=receive_message, args=(conn,addr))
+        receive_thread.start()
+
+
+if(__name__ == '__main__'):
+    main()
