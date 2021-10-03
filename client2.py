@@ -1,82 +1,140 @@
 #                packet format
 #   | destination | length of message |   message   |
-#   |   15 byte   |      2 byte       |  0-99 byte  |
+#   |   24 byte   |      2 byte       |  0-99 byte  |
+
 
 
 
 import socket
 import threading
+import time
+import sys
+from logging1 import Logging1
 
-SERVER='192.168.43.181'                                    #chat server
-PORT=5000                                                  #port for this application
+HOST=''                                                 #all network interfaces can be used for connection
+PORT=5000                                               #port which server listen
 
-s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-s.connect((SERVER,PORT))
+logger=Logging1()
+
+data_packets=[]                                          #destination and message to destination
+connected_clients=[]                                     #socket addresses of connnected clients
 
 
-def customize_destination(dst):
-    '''costumize acording max ip length, dots (15) and conn object (conn, add = s.accept())'''
+try:
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.bind((HOST,PORT))
+    s.listen()
+except Exception as e:
+    print('Something went wrong while creating socket. For more information see log file')
+    logger.log('error',str(e))
+    print('exiting...')
+    sys.exit()
 
-    if(len(dst)<15):
-        while(len(dst)<15):
-            dst=dst + '*'
 
-    dst="raddr=('" + dst + "'"
-    return dst
+
+
+
+def close(conn):
+    conn.sendall('4'.encode('utf-8'))
+    conn.sendall('quit'.encode('utf-8'))
+    conn.close()
+    
+    if(connected_clients):
+        connected_clients.remove(conn)
 
 
 def check_message_len(lenght):
     '''customize length of outgoing message. If len<10 add '0' to end of len'''
-
-    len_as_str =''
+    len_as_str=''
     if(lenght<=99):
         if(lenght<10):
             len_as_str='0' + str(lenght)
         else:
             len_as_str=str(lenght)
-
     return len_as_str
 
 
-def receive_messages():
-    '''receive message from chat partner via chat server'''
+def remove_stars(dst):
+    '''  raddr=('192.168.4.181** ===> raddr=('192.168.4.181  '''
+    index=dst.find('*')
+    return dst[0:index]
 
+
+def receive_message(conn,addr):
+    '''receive messages from each client'''
     while(True):
-        msg_len=s.recv(2)                                #accept incoming message length
-        msg=s.recv(int(msg_len.decode('utf-8')))
-        if(msg.decode('utf-8')== 'quit'):
+        dst=(conn.recv(24)).decode('utf-8')                           #accept destination ip
+
+        logger.log('info', 'message destination is: ' + dst)
+
+        msg_len=(conn.recv(2)).decode('utf-8')                        #accept incoming message length
+        msg=(conn.recv(int(msg_len))).decode('utf-8')
+
+        #if client request to end chat then close connection
+        if(msg == 'quit'):
+            close(conn)
+            logger.log('info', f'chat closed by {addr}')
             break
 
-        print('\n ========> ',msg)
-        print('\n')
+        logger.log('info', f'{msg} from {addr} to {dst}')
+
+        dst=remove_stars(dst)
+        data_packets.append((dst,msg))
+
+        logger.log('info', 'data packets is : ' + str(data_packets))
+
+
+
+
+def send_messages():
+    ''' check message destination and connected clients. Then send messages'''
+    global command
+    
+    while(True):
+        #print('command ', command)
+        #if(command == 'close'):
+            #break
+        time.sleep(2)
+        if(data_packets):
+            for packet in data_packets:
+                for connected_client in connected_clients:
+                    if(str(connected_client).find(packet[0])!=-1):
+                        len_as_str=check_message_len(len(packet[1]))
+                        connected_client.sendall(len_as_str.encode('utf-8'))       #send length of data
+                        connected_client.sendall(packet[1].encode('utf-8'))        #send data
+                        data_packets.remove(packet)
+                        logger.log('info', f'message sent: {packet}')
+                        logger.log('info', 'data packets after last send is : ' + str(data_packets))
+
+                        
 
 
 def main():
-    '''program start from here'''
+    ''' program begin from here '''
+    global send_thread
+        
 
-    receive_messages_thread=threading.Thread(target=receive_messages)
-    receive_messages_thread.start()
-    
-
-
-    dst=input("enter destination:")                         #where client want to send message
-    dst=customize_destination(dst)
-
+    send_thread=threading.Thread(target=send_messages)
+    send_thread.start()
 
     while(True):
-        s.sendall(dst.encode('utf-8'))                      #send destination (first packet)
+        #print('cmnd: ',command)
+        #if(command == 'close'):
+            #break
 
-        msg=input('enter message  :')
-        lenght=len(msg)
-        len_as_str=check_message_len(lenght)                #length of outgoing message. for example, 89,45,56,07,04
-                
+        print('accepting')
+        conn, addr = s.accept()
+        connected_clients.append(conn)
 
-        s.sendall(len_as_str.encode('utf-8'))               #send length of message (second packet)
-        s.sendall(msg.encode('utf-8'))                      #send message itself (thrid packet)
+        log_line='connected clients: ' + str(connected_clients)
+        logger.log('info',log_line)
 
-        if(msg == 'quit'):
-            print('bye')
-            break
+        #print('connected clients  :',connected_clients)
+
+
+        receive_thread=threading.Thread(target=receive_message, args=(conn,addr))
+        receive_thread.start()
+        print(receive_thread)
 
 
 if(__name__ == '__main__'):
