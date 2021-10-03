@@ -8,33 +8,39 @@
 import socket
 import threading
 import time
+import sys
 from logging1 import Logging1
 
 HOST=''                                                 #all network interfaces can be used for connection
 PORT=5000                                               #port which server listen
-
-s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-s.bind((HOST,PORT))
-s.listen()
-
-event=threading.Event()
-
-send_thread = None
-
-command=''
 
 logger=Logging1()
 
 data_packets=[]                                          #destination and message to destination
 connected_clients=[]                                     #socket addresses of connnected clients
 
+
+try:
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.bind((HOST,PORT))
+    s.listen()
+except Exception as e:
+    print('Something went wrong while creating socket. For more information see log file')
+    logger.log('error',str(e))
+    print('exiting...')
+    sys.exit()
+
+
+
+
+
 def close(conn):
-    global command
-    command='close'
     conn.sendall('4'.encode('utf-8'))
     conn.sendall('quit'.encode('utf-8'))
     conn.close()
-    connected_clients.remove(conn)
+    
+    if(connected_clients):
+        connected_clients.remove(conn)
 
 
 def check_message_len(lenght):
@@ -78,14 +84,16 @@ def receive_message(conn,addr):
         logger.log('info', 'data packets is : ' + str(data_packets))
 
 
+
+
 def send_messages():
     ''' check message destination and connected clients. Then send messages'''
     global command
     
     while(True):
-        print('command ', command)
-        if(command == 'close'):
-            break
+        #print('command ', command)
+        #if(command == 'close'):
+            #break
         time.sleep(2)
         if(data_packets):
             for packet in data_packets:
@@ -104,15 +112,17 @@ def send_messages():
 def main():
     ''' program begin from here '''
     global send_thread
-    
+        
 
     send_thread=threading.Thread(target=send_messages)
     send_thread.start()
 
     while(True):
-        print('cmnd: ',command)
-        if(command == 'close'):
-            break
+        #print('cmnd: ',command)
+        #if(command == 'close'):
+            #break
+
+        print('accepting')
         conn, addr = s.accept()
         connected_clients.append(conn)
 
