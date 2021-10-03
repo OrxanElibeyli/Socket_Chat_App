@@ -6,12 +6,19 @@
 
 import socket
 import threading
+import sys
 
 SERVER='192.168.43.181'                                    #chat server
 PORT=5000                                                  #port for this application
 
-s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-s.connect((SERVER,PORT))
+try:
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.connect((SERVER,PORT))
+except Exception as e:
+    print('Can not connect to server.')
+    print('exiting...')
+    sys.exit()
+
 
 
 def customize_destination(dst):
@@ -48,7 +55,7 @@ def receive_messages():
             break
 
         print('\n ========> ',msg)
-        print('\n')
+        #print('\n')
 
 
 def main():
@@ -66,7 +73,7 @@ def main():
     while(True):
         s.sendall(dst.encode('utf-8'))                      #send destination (first packet)
 
-        msg=input('enter message  :')
+        msg=input()
         lenght=len(msg)
         len_as_str=check_message_len(lenght)                #length of outgoing message. for example, 89,45,56,07,04
                 
