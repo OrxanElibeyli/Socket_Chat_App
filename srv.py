@@ -24,6 +24,7 @@ PORT = 4224
 LEN_OF_IP = 15
 
 established_connections = []
+packets = []
 
 
 
@@ -51,9 +52,11 @@ def receive_messages(conn):
 
         package = sender + "|" + receiver + "|" + message + "\n"
 
-        message_file = open("messages.txt","a")
-        message_file.write(package)
-        message_file.close()
+        packets.append(package)
+
+        # message_file = open("messages.txt","a")
+        # message_file.write(package)
+        # message_file.close()
     
 
 
@@ -78,29 +81,37 @@ def format_len(message):
     return str(leng)
 
 def send_messages():
-    message_file = open("messages.txt","r")
+
+    
     while(True):
         if(established_connections):
-            for line in message_file:
-                headers = line.split('|', 3)
+            for packet in packets:
+                headers = packet.split('|', 3)
                 #print("!!!!!!!! ----> ", established_connections[0].getpeername()[0])
                 for established_connection in established_connections:
                     #print("getpeername - ->", established_connection.getpeername[0])
-                    if(established_connection.getpeername()[0] == headers[1]):
+                    if(established_connection.getpeername()[0] == headers[1] and packet[0] != '#'):
                         
                         print('-------',format_IP(headers[0]))
 
                         #IP address of sender (first header of packet)
                         established_connection.sendall(format_IP(headers[0]).encode('utf-8'))   
-
+ 
                         print('--------',format_len(headers[2]))
                         #send len of message (second header of packet)
                         established_connection.sendall(format_len(headers[2]).encode('utf-8'))
 
                         print('--------',headers[2])
                         #send message (third header of message)
-                        established_connection.sendall(headers[2].encode('utf-8'))        
+                        established_connection.sendall(headers[2].encode('utf-8'))
 
+
+                        #delete message which was sent
+                        packets.remove(packet)
+                            
+
+
+                        
 
 
 
