@@ -59,7 +59,7 @@ def show_messages_to_user(sender, message_from_client):
     print('i am here')
     file_name = str(sender) + '.txt'
     message_file = open(file_name, 'a')
-    message_file.write(message_from_client)
+    message_file.write("message from peer ---------> " + message_from_client)
     message_file.close()
 
 
@@ -96,7 +96,7 @@ while(True):
 
     #files = os.listdir()
 
-    # destination = str(dst).replace('*','') + '.txt'
-    # message_file = open(destination, 'a')
-    # message_file.write("your message == > " + message_to_client + '\n')
-    # message_file.close()
+    destination = str(dst).replace('*','') + '.txt'
+    message_file = open(destination, 'a')
+    message_file.write("your message == > " + message_to_client + '\n')
+    message_file.close()
