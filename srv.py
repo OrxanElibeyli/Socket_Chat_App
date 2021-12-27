@@ -14,7 +14,6 @@
 
 import socket
 import threading
-import re
 
 
 clients = []
@@ -29,8 +28,21 @@ packets = []
 
 
 sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-sock.bind((HOST, PORT))
+
+try:
+    sock.bind((HOST, PORT))
+except Exception as e:
+    print('this exception occured ---->', e)
+    print('exiting...')
+    quit()
+    
 sock.listen()
+
+
+
+
+
+
 
 
 #this function is used by threat for receiving messages from client
@@ -109,11 +121,6 @@ def send_messages():
                         #delete message which was sent
                         packets.remove(packet)
                             
-
-
-                        
-
-
 
 t_send = threading.Thread(target=send_messages)
 t_send.start()
