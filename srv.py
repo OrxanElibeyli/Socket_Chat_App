@@ -14,6 +14,7 @@
 
 import socket
 import threading
+import time
 
 
 clients = []
@@ -66,6 +67,10 @@ def receive_messages(conn):
 
         packets.append(package)
 
+
+
+        print(packets)
+
         # message_file = open("messages.txt","a")
         # message_file.write(package)
         # message_file.close()
@@ -96,6 +101,7 @@ def send_messages():
 
     
     while(True):
+        time.sleep(1)
         if(established_connections):
             for packet in packets:
                 headers = packet.split('|', 3)
@@ -109,16 +115,17 @@ def send_messages():
                         #IP address of sender (first header of packet)
                         established_connection.sendall(format_IP(headers[0]).encode('utf-8'))   
  
-                        print('--------',format_len(headers[2]))
+                        print('-!-------',format_len(headers[2]))
                         #send len of message (second header of packet)
                         established_connection.sendall(format_len(headers[2]).encode('utf-8'))
 
-                        print('--------',headers[2])
+                        print('--------|',headers[2],'|')
                         #send message (third header of message)
                         established_connection.sendall(headers[2].encode('utf-8'))
 
 
                         #delete message which was sent
+                        print('packets -- >',packets)
                         packets.remove(packet)
                             
 
@@ -128,6 +135,14 @@ t_send.start()
 while(True):
     conn, addr = sock.accept()
     established_connections.append(conn)
+    print('established connections ---->', established_connections)
 
     t1 = threading.Thread(target=receive_messages, args=(conn,))
     t1.start()
+
+
+
+
+
+#   NOTE
+# there is a bug. when a client connect to server 2 times, message from its peer come two times and an exception occurs
