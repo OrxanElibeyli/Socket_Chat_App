@@ -91,7 +91,7 @@ def receive_messages():
         #first header of packet
         sender = sock.recv(LEN_OF_IP).decode('utf-8')
         sender = sender.replace('*','')
-        print(sender)
+        #print('sender-->',sender)
 
         #second header of packet
         len_of_incoming_message = sock.recv(2).decode('utf-8')
