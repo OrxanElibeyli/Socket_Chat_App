@@ -98,35 +98,43 @@ def format_len(message):
     return str(leng)
 
 def send_messages():
+    print('\n send function called \n')
 
+    for packet in packets:
+        print('packet --> ',packet)
+    
+    print('\n')
     
     while(True):
         time.sleep(1)
         if(established_connections):
             for packet in packets:
                 headers = packet.split('|', 3)
-                #print("!!!!!!!! ----> ", established_connections[0].getpeername()[0])
+                print("!!!!!!!! ----> ", packets)
+                print('packet -- >', packet)
                 for established_connection in established_connections:
+                    print('ec -->',established_connection)
                     #print("getpeername - ->", established_connection.getpeername[0])
-                    if(established_connection.getpeername()[0] == headers[1] and packet[0] != '#'):
+                    if(established_connection.getpeername()[0] == headers[1] and packets):
                         
-                        print('-------',format_IP(headers[0]))
+                        #print('-------',format_IP(headers[0]))
 
                         #IP address of sender (first header of packet)
                         established_connection.sendall(format_IP(headers[0]).encode('utf-8'))   
  
-                        print('-!-------',format_len(headers[2]))
+                        #print('-!-------',format_len(headers[2]))
                         #send len of message (second header of packet)
                         established_connection.sendall(format_len(headers[2]).encode('utf-8'))
 
-                        print('--------|',headers[2],'|')
+                        #print('--------|',headers[2],'|')
                         #send message (third header of message)
                         established_connection.sendall(headers[2].encode('utf-8'))
 
 
                         #delete message which was sent
-                        print('packets -- >',packets)
+                        print('packets before -- >',packets)
                         packets.remove(packet)
+                        print('packets after -- >',packets)
                             
 
 t_send = threading.Thread(target=send_messages)
@@ -135,7 +143,12 @@ t_send.start()
 while(True):
     conn, addr = sock.accept()
     established_connections.append(conn)
-    print('established connections ---->', established_connections)
+    #print('established connections ---->', established_connections)
+
+    for connnection in established_connections:
+        print('established connection --> ', connnection)
+
+    print('\n')
 
     t1 = threading.Thread(target=receive_messages, args=(conn,))
     t1.start()
