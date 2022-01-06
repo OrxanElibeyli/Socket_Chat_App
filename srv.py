@@ -15,9 +15,8 @@
 import socket
 import threading
 import time
+import logging
 
-
-clients = []
 
 HOST = ''
 PORT = 4224
@@ -28,54 +27,45 @@ packets = []
 
 
 
+logging.basicConfig(filename='logg.txt',filemode='a',format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG)
+
+
+
 sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 try:
     sock.bind((HOST, PORT))
+    sock.listen()
 except Exception as e:
-    print('this exception occured ---->', e)
-    print('exiting...')
+    logging.error(str(e))
+    logging.info('some error occured during creating socket.\nquiting...')
     quit()
     
-sock.listen()
-
-
-
-
-
-
 
 
 #this function is used by threat for receiving messages from client
 def receive_messages(conn):
     while(True):
-        #first header of packet
+        #first header of packet (receiver IP)
         receiver = conn.recv(LEN_OF_IP).decode('utf-8')
         receiver = receiver.replace('*','')
 
-
-        #second header of packet
+        #second header of packet (len of incomming message)
         len_of_incoming_message = conn.recv(2).decode('utf-8')
         len_of_incoming_message = len_of_incoming_message.replace('*','')
 
-        #third header of packet
+        #third header of packet (message itself)
         message = conn.recv(int(len_of_incoming_message)).decode('utf-8')
+
 
         sender = conn.getpeername()[0]
 
         package = sender + "|" + receiver + "|" + message + "\n"
 
         packets.append(package)
+        logging.debug('packets are --> ' + str(packets))
 
-
-
-        print(packets)
-
-        # message_file = open("messages.txt","a")
-        # message_file.write(package)
-        # message_file.close()
     
-
 
 #192.168.6.15  ===> 192.168.6.15***
 def format_IP(str):
@@ -90,6 +80,7 @@ def format_IP(str):
     return IP
 
 
+
 def format_len(message):
     leng = len(message)
     if(leng<10):
@@ -97,65 +88,46 @@ def format_len(message):
 
     return str(leng)
 
-def send_messages():
-    print('\n send function called \n')
 
-    for packet in packets:
-        print('packet --> ',packet)
-    
-    print('\n')
-    
+
+def send_messages():
     while(True):
+
         time.sleep(1)
+
         if(established_connections):
             for packet in packets:
                 headers = packet.split('|', 3)
-                print("!!!!!!!! ----> ", packets)
-                print('packet -- >', packet)
+
                 for established_connection in established_connections:
-                    print('ec -->',established_connection)
-                    #print("getpeername - ->", established_connection.getpeername[0])
                     if(established_connection.getpeername()[0] == headers[1] and packets):
-                        
-                        #print('-------',format_IP(headers[0]))
 
                         #IP address of sender (first header of packet)
                         established_connection.sendall(format_IP(headers[0]).encode('utf-8'))   
  
-                        #print('-!-------',format_len(headers[2]))
                         #send len of message (second header of packet)
                         established_connection.sendall(format_len(headers[2]).encode('utf-8'))
 
-                        #print('--------|',headers[2],'|')
                         #send message (third header of message)
                         established_connection.sendall(headers[2].encode('utf-8'))
 
-
-                        #delete message which was sent
-                        print('packets before -- >',packets)
                         packets.remove(packet)
-                        print('packets after -- >',packets)
                             
 
-t_send = threading.Thread(target=send_messages)
-t_send.start()
 
-while(True):
-    conn, addr = sock.accept()
-    established_connections.append(conn)
-    #print('established connections ---->', established_connections)
+def main():
+    t_send = threading.Thread(target=send_messages)
+    t_send.start()
 
-    for connnection in established_connections:
-        print('established connection --> ', connnection)
+    while(True):
+        conn, addr = sock.accept()
+        established_connections.append(conn)
+        logging.debug('established connections are: --> ' + str(established_connections))
 
-    print('\n')
-
-    t1 = threading.Thread(target=receive_messages, args=(conn,))
-    t1.start()
+        t1 = threading.Thread(target=receive_messages, args=(conn,))
+        t1.start()
 
 
 
-
-
-#   NOTE
-# there is a bug. when a client connect to server 2 times, message from its peer come two times and an exception occurs
+if(__name__ == '__main__'):
+    main()
