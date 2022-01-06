@@ -15,7 +15,9 @@
 import socket
 import threading
 import ipaddress
+import logging
 
+logging.basicConfig(filename='client_logs.txt',filemode='a',format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG)
 
 
 SERVER = '192.168.3.71'
@@ -27,11 +29,11 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     sock.connect((SERVER,PORT))
-    print('connected to the server')
+    logging.info(f'connected to the server: {SERVER}')
 except Exception as e:
-    print('this exception occured: -- >', e)
-    print('something went wrong while connecting to the server. Probably server is not up')
-    print('exiting...')
+    logging.error(str(e))
+    logging.info('some error ocurred during connection to server.')
+    logging.info('quiting...')
     quit()
         
 
@@ -69,8 +71,6 @@ def format_len(message):
         
 
 
-
-
 def show_messages_to_user(sender, message_from_client):
     file_name = str(sender) + '.txt'
 
@@ -79,19 +79,19 @@ def show_messages_to_user(sender, message_from_client):
         try:
             message_file.write("message from peer ---------> " + message_from_client)
         except Exception as e:
-            print('this exception occured while writing to file: --->', e)
+            logging.error('thi error occured while writing to the file:' + str(e))
         finally:
             message_file.close()
     except Exception as e:
-            print('this exception occured while opening file: --->', e)
+            logging.error('thi error occured while opening file:' + str(e))
 
 
 def receive_messages():
     while(True):
+
         #first header of packet
         sender = sock.recv(LEN_OF_IP).decode('utf-8')
         sender = sender.replace('*','')
-        #print('sender-->',sender)
 
         #second header of packet
         len_of_incoming_message = sock.recv(2).decode('utf-8')
@@ -104,10 +104,8 @@ def receive_messages():
 
     
 
-
 t_receive = threading.Thread(target=receive_messages)
 t_receive.start()
-
 
 
 while(True):
