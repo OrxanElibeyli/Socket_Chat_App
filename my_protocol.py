@@ -40,10 +40,8 @@ class MY_PROTOCOL:
         conn = args.pop('conn', False)
         if(conn):
             self.__packet['conn'] = conn
-            self.__packet['src'] = conn.getsockname()[0]
+            self.__packet['src'] = self.__format_IP(conn.getsockname()[0])
             
-
-
 
         dst = args.pop('dst', False)
         if(dst):
@@ -66,9 +64,9 @@ class MY_PROTOCOL:
 
 
     def receive_message(self, conn):
-        src = conn.recv(15).decode('utf-8')
-        dst = conn.recv(15).decode('utf-8')
-        len_of_msg = conn.recv(2).decode('utf-8')
+        src = conn.recv(15).decode('utf-8').replace('*','')
+        dst = conn.recv(15).decode('utf-8').replace('*','')
+        len_of_msg = conn.recv(2).decode('utf-8').replace('*','')
         message = conn.recv(int(len_of_msg)).decode('utf-8')
 
         return {'src': src, 'dst': dst, 'len_of_msg': len_of_msg, 'message':message}
