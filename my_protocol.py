@@ -4,7 +4,6 @@
 # ------------------------------------------------------------  #
 #################################################################
 
-
 import socket
 
 class MY_PROTOCOL:
@@ -38,9 +37,13 @@ class MY_PROTOCOL:
 
     def __prepare_packet(self,args):
         conn = args.pop('conn', False)
+        src = args.pop('src', False)
+
+        if(src):
+            self.__packet['src'] = self.__format_IP(src)
+
         if(conn):
             self.__packet['conn'] = conn
-            self.__packet['src'] = self.__format_IP(conn.getsockname()[0])
             
 
         dst = args.pop('dst', False)
